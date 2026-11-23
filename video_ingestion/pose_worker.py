@@ -44,6 +44,16 @@ class PoseProcessingWorker:
     def stop(self):
         self.running = False
 
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=5)
+
+            if self.thread.is_alive():
+                print(
+                    "Warning: pose worker is still running "
+                    "after the 5-second shutdown timeout."
+                )
+
+        self.frame_queue.clear()
         if self.thread:
             self.thread.join(timeout=3)
 
