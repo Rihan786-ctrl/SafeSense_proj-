@@ -54,3 +54,7 @@ class PoseProcessingWorker:
                 )
 
         self.frame_queue.clear()
+        if self.thread:
+            self.thread.join(timeout=3)
+
+        self.frame_queue.clear()

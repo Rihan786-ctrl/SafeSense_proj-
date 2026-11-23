@@ -76,6 +76,9 @@ class InferenceWorker:
                     "after the 5-second shutdown timeout."
                 )
 
+            # Wait for any active inference call to finish.
+            self.thread.join()
+
         # Discard pending work that was not started.
         while True:
             try:

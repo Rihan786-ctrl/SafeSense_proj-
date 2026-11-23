@@ -30,6 +30,10 @@ class SkeletonSequenceBuilder:
             self.new_skeletons = 0
             self.sequence_ready = False
 
+        # CHANGE: Track whether the first complete window
+        # has already been returned.
+        self.sequence_ready = False
+
     def add_skeleton(self, skeleton):
 
         skeleton = np.asarray(skeleton, dtype=np.float32)
