@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeSense AI — Laboratory Activity & Risk Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-badge">
+        <span class="logo-icon">🛡️</span>
+        <div class="logo-text">
+          <h1>SafeSense AI</h1>
+          <span class="subtitle">Context-Aware Laboratory Safety & Activity Recognition</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="system-status-pill">
+        <span class="pulse-dot" id="system-status-dot"></span>
+        <span id="system-status-text">CONNECTING...</span>
+      </div>
+      <div class="stat-pill" title="Hardware inference mode">
+        <span class="pill-label">INFERENCE DEVICE:</span>
+        <span class="pill-val" id="header-device">Not reported</span>
+      </div>
+      <div class="stat-pill" title="Activity model used for the latest event">
+        <span class="pill-label">MODEL:</span>
+        <span class="pill-val" id="header-model">Not reported</span>
+      </div>
+      <button class="btn btn-secondary" id="btn-toggle-refresh">Auto-Refresh: ON</button>
+    </div>
+  </header>
+
+  <!-- Emergency Alert Banner (Shown during Critical/High risk) -->
+  <div id="alert-banner" class="alert-banner hidden">
+    <div class="alert-content">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-text">
+        <strong id="alert-title">CRITICAL INCIDENT DETECTED</strong>
+        <p id="alert-reason">Fall motion pattern detected with 88% confidence in Zone 1.</p>
+      </div>
+    </div>
+    <div class="alert-actions">
+      <button class="btn btn-alert-ack" id="btn-dismiss-alert">Dismiss Banner</button>
+    </div>
+  </div>
+
+  <main class="dashboard-main">
+    <section class="card system-health-card" aria-labelledby="health-heading">
+      <div class="card-header">
+        <h2 id="health-heading">System Health</h2>
+        <span class="tag">Technical status; separate from safety incidents</span>
+      </div>
+      <dl class="health-grid" aria-live="polite">
+        <div class="health-item"><dt>API</dt><dd id="health-api">Checking...</dd></div>
+        <div class="health-item"><dt>Camera</dt><dd id="health-camera">Checking...</dd></div>
+        <div class="health-item"><dt>Configured model file</dt><dd id="health-model">Checking...</dd></div>
+        <div class="health-item"><dt>Event database</dt><dd id="health-database">Checking...</dd></div>
+        <div class="health-item"><dt>Inference freshness</dt><dd id="health-inference">Checking...</dd></div>
+      </dl>
+      <p class="health-note" id="health-note">Technical health checks do not confirm that an incident was detected or saved.</p>
+    </section>
+
+    <!-- Top Summary KPI Cards -->
+    <section class="kpi-grid">
+      <div class="kpi-card" id="kpi-activity-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Latest Recorded Activity</span>
+          <span class="kpi-badge" id="activity-id-badge">SCORE: --</span>
+        </div>
+        <div class="kpi-value" id="kpi-activity">NO RECENT EVENT</div>
+        <div class="confidence-bar-container">
+          <div class="confidence-bar" id="activity-confidence-bar" style="width: 0%;"></div>
+        </div>
+        <div class="kpi-footer">
+          <span>Model score: <strong id="kpi-confidence">--</strong></span>
+          <span id="kpi-latency">Latency: -- ms</span>
+        </div>
+      </div>
+
+      <div class="kpi-card" id="kpi-risk-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Risk Assessment</span>
+          <span class="kpi-sublabel">Explainable Engine</span>
+        </div>
+        <div class="kpi-value-row">
+          <div class="kpi-value status-uncertain" id="kpi-risk-level">UNKNOWN</div>
+          <div class="risk-score-circle" id="risk-score-circle">
+            <span id="kpi-risk-score">--</span>
+          </div>
+        </div>
+        <p class="kpi-reason" id="kpi-risk-reason">No inference event has been received.</p>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Latest Alert State</span>
+          <span class="kpi-sublabel">From most recent recorded event</span>
+        </div>
+        <div class="kpi-value" id="kpi-incident-status">NO RECENT EVENT</div>
+        <div class="kpi-footer-status">
+          <span>Alert event: <strong id="kpi-alert-count">NOT REPORTED</strong></span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Zone Configuration</span>
+          <span class="kpi-sublabel">From active risk rules</span>
+        </div>
+        <div class="kpi-value" id="kpi-zone-status">CONFIGURATION UNKNOWN</div>
+        <p class="kpi-zone-desc" id="kpi-zone-desc">Loading configured safety zones.</p>
+      </div>
+    </section>
+
+    <!-- Two-Column Central Layout -->
+    <div class="content-split">
+      <!-- Left Column: Laboratory Safety Map & Probability Distribution -->
+      <section class="card zone-visualizer-card">
+        <div class="card-header">
+          <h2>Configured Laboratory Zones</h2>
+          <span class="tag">Configured bounds; no live position telemetry</span>
+        </div>
+        <div class="zone-canvas-wrapper">
+          <canvas id="zone-canvas" width="480" height="320"></canvas>
+          <div class="zone-legend">
+            <span class="legend-item"><span class="legend-color normal-zone"></span> Frame coordinates</span>
+            <span class="legend-item"><span class="legend-color danger-zone"></span> Configured zone</span>
+          </div>
+        </div>
+
+        <div class="probabilities-section">
+          <h3>Activity Model Scores</h3>
+          <div class="prob-list" id="prob-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Live Event Stream & Controls -->
+      <section class="card stream-card">
+        <div class="card-header">
+          <h2>Event History (latest first)</h2>
+          <div class="filter-group">
+            <button class="filter-btn active" data-filter="all" id="filter-all">All</button>
+            <button class="filter-btn" data-filter="alerts" id="filter-alerts">Alerts Only</button>
+            <button class="filter-btn" data-filter="critical" id="filter-critical">Critical / High</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="event-table" id="event-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Activity</th>
+                <th>Model score</th>
+                <th>Risk Level</th>
+                <th>Score</th>
+                <th>Explainable Rationale</th>
+              </tr>
+            </thead>
+            <tbody id="event-tbody">
+              <tr>
+                <td colspan="6" class="empty-state">Awaiting pipeline stream events...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <section class="event-details" aria-labelledby="event-details-heading" aria-live="polite">
+          <h3 id="event-details-heading">Event Details</h3>
+          <p id="event-details-placeholder">Select an event to inspect its recorded details.</p>
+          <dl id="event-details-list" class="event-details-list"></dl>
+        </section>
+
+        <!-- Demonstration Simulation Bar -->
+        <div class="demo-controls">
+          <span class="demo-label">Demo Simulation:</span>
+          <button class="btn btn-sm btn-outline" id="btn-sim-walk">Simulate Walk</button>
+          <button class="btn btn-sm btn-outline" id="btn-sim-run">Simulate Running</button>
+          <button class="btn btn-sm btn-outline" id="btn-sim-zone">Simulate Zone Breach</button>
+          <button class="btn btn-sm btn-danger" id="btn-sim-fall">Simulate Fall Alert</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <p>SafeSense AI — Final Year B.Tech Engineering Project </p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
