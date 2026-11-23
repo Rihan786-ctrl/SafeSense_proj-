@@ -67,6 +67,15 @@ class InferenceWorker:
         self.stop_event.set()
 
         if self.thread and self.thread.is_alive():
+            # Wait briefly for active inference to finish.
+            self.thread.join(timeout=5)
+
+            if self.thread.is_alive():
+                print(
+                    "Warning: inference worker is still running "
+                    "after the 5-second shutdown timeout."
+                )
+
             # Wait for any active inference call to finish.
             self.thread.join()
 

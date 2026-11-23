@@ -6,12 +6,29 @@ import numpy as np
 
 class SkeletonSequenceBuilder:
 
+    """
+    Builds fixed-length temporal skeleton sequences.
+
+    Each skeleton has shape (17, 3).
+    Each complete sequence has shape (window_size, 17, 3).
+    """
+
     def __init__(self, window_size=30, stride=5):
         self.window_size = window_size
         self.stride = stride
 
         self.sequence = deque(maxlen=window_size)
         self.new_skeletons = 0
+
+        # CHANGE: Track whether the first complete window
+        # has already been returned.
+        self.sequence_ready = False
+
+    def reset(self):
+            """Clear buffered skeletons after a detection gap."""
+            self.sequence.clear()
+            self.new_skeletons = 0
+            self.sequence_ready = False
 
         # CHANGE: Track whether the first complete window
         # has already been returned.
